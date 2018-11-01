@@ -265,6 +265,18 @@ class InstallCfg(object):
             print("Did you successfully build the executables?")
             print("If not, please run make in %s." % (self.A_SRC_DIR))
             sys.exit(3)
+            
+        #
+        # UW Site Response Directories
+        #
+        self.A_UW_BIN_DIR = os.path.join(self.A_INSTALL_ROOT,
+                                           "src", "uwsr", "bin")
+        if not os.path.exists(self.A_UW_BIN_DIR):
+            print("Can't find UW Site Response bin directory %s." %
+                  (self.A_UW_BIN_DIR))
+            print("Did you successfully build the executables?")
+            print("If not, please run make in %s." % (self.A_SRC_DIR))
+            sys.exit(3)
 
         # Plot directories
         self.A_PLOT_DATA_DIR = os.path.join(self.A_INSTALL_ROOT, "plot")

@@ -40,7 +40,9 @@ class uwsr(object):
         sim_id = self.sim_id
 
         a_outdir = os.path.join(install.A_OUT_DATA_DIR, str(sim_id))
-        a_indir = os.path.join(install.A_IN_DATA_DIR, str(sim_id))
+        a_tmpdir = os.path.join(install.A_TMP_DATA_DIR, str(sim_id))
+        a_logdir = os.path.join(install.A_OUT_LOG_DIR, str(sim_id))
+        a_indir  = os.path.join(install.A_IN_DATA_DIR, str(sim_id))
 
         a_statlist = os.path.join(a_indir, self.r_stations)
         slo = StationList(a_statlist)
@@ -53,13 +55,18 @@ class uwsr(object):
             vel_file = os.path.join(a_outdir, "%d.%s.vel.bbp" %
                                     (sim_id, site.scode))
 
+            log_file = os.path.join(a_logdir, "%d.%s.siteresponse.log" %
+                                    (sim_id, site.scode))
+
             progstring = ("%s " %
-                        (os.path.join(install.A_GP_BIN_DIR, "../../uwsr/bin/siteresponse")) +
+                        (os.path.join(install.A_UW_BIN_DIR, "siteresponse")) +
                         "%s " % (self.r_locfile) +
                         "-bbp " +
-                        "%s " % (vel_file))
+                        "%s " % (vel_file)+
+                        "%s " % (a_tmpdir)+
+                        "%s " % (log_file))
             bband_utils.runprog(progstring)
-            print(progstring)
+            
 
 
 if __name__ == "__main__":

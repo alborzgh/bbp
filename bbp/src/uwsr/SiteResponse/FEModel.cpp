@@ -1,4 +1,6 @@
 #include <vector>
+#include <iostream>
+#include <sstream>
 
 #include "FEModel.h"
 
@@ -63,9 +65,17 @@
 
 #define PRINTDEBUG false
 
+
+#if defined(WIN32) || defined(_WIN32) 
+#define PATH_SEPARATOR "\\" 
+#else 
+#define PATH_SEPARATOR "/" 
+#endif 
+
 SiteResponseModel::SiteResponseModel() :
 	theMotionX(0),
-	theMotionZ(0)
+	theMotionZ(0),
+	theOutputDir(".")
 {
 
 }
@@ -73,7 +83,8 @@ SiteResponseModel::SiteResponseModel() :
 SiteResponseModel::SiteResponseModel(SiteLayering layering, OutcropMotion* motionX, OutcropMotion* motionY) :
 	SRM_layering(layering),
 	theMotionX(motionX),
-	theMotionZ(motionY)
+	theMotionZ(motionY),
+	theOutputDir(".")
 {
 	if (theMotionX->isInitialized() || theMotionZ->isInitialized())
 		theDomain = new Domain();
@@ -446,15 +457,18 @@ SiteResponseModel::runTotalStressModel()
 	dofToRecord(1) = 1;
 	dofToRecord(2) = 2;
 
-	theOutputStream = new DataFileStream("surface.acc", OVERWRITE, 2, 0, false, 6, false);
+	std::string outFile = theOutputDir + PATH_SEPARATOR +  "surface.acc";
+	theOutputStream = new DataFileStream(outFile.c_str(), OVERWRITE, 2, 0, false, 6, false);
 	theRecorder = new NodeRecorder(dofToRecord, &nodesToRecord, 0, "accel", *theDomain, *theOutputStream, 0.0, true, NULL);
 	theDomain->addRecorder(*theRecorder);
 
-	theOutputStream = new DataFileStream("surface.vel", OVERWRITE, 2, 0, false, 6, false);
+	outFile = theOutputDir + PATH_SEPARATOR + "surface.vel";
+	theOutputStream = new DataFileStream(outFile.c_str(), OVERWRITE, 2, 0, false, 6, false);
 	theRecorder = new NodeRecorder(dofToRecord, &nodesToRecord, 0, "vel", *theDomain, *theOutputStream, 0.0, true, NULL);
 	theDomain->addRecorder(*theRecorder);
 
-	theOutputStream = new DataFileStream("surface.disp", OVERWRITE, 2, 0, false, 6, false);
+	outFile = theOutputDir + PATH_SEPARATOR + "surface.disp";
+	theOutputStream = new DataFileStream(outFile.c_str(), OVERWRITE, 2, 0, false, 6, false);
 	theRecorder = new NodeRecorder(dofToRecord, &nodesToRecord, 0, "disp", *theDomain, *theOutputStream, 0.0, true, NULL);
 	theDomain->addRecorder(*theRecorder);
 
@@ -474,6 +488,8 @@ SiteResponseModel::runTotalStressModel()
 	// theDomain->addRecorder(*theRecorder);
 
 	// perform analysis
+	opserr << "Analysis started:" << endln;
+	std::stringstream progressBar;
 	for (int analysisCount = 0; analysisCount < numSteps; ++analysisCount) {
 		//int converged = theAnalysis->analyze(1, 0.01, 0.005, 0.02, 1);
 		double stepDT = dt[analysisCount];
@@ -481,8 +497,33 @@ SiteResponseModel::runTotalStressModel()
 		//int converged = theTransientAnalysis->analyze(1, 0.002);
 		if (!converged) {
 			opserr << "Converged at time " << theDomain->getCurrentTime() << endln;
+
+			if (analysisCount % (int)(numSteps / 20) == 0)
+			{
+				progressBar << "\r[";
+				for (int ii = 0; ii < (int)(20 * analysisCount / numSteps); ii++)
+					progressBar << ".";
+				for (int ii = (int)(20 * analysisCount / numSteps); ii < 20; ii++)
+					progressBar << "-";
+
+				progressBar << "]  " << (int)(100 * analysisCount / numSteps) << "%";
+				opsout << progressBar.str().c_str();
+				opsout.flush();
+			}
+		}
+		else {
+			opserr << "Site response analysis did not converge." << endln;
+			exit(-1);
 		}
 	}
+	progressBar << "\r[";
+	for (int ii = 0; ii < 20; ii++)
+		progressBar << ".";
+
+	progressBar << "] 100%";
+	opsout << progressBar.str().c_str();
+	opsout.flush();
+	opsout << endln;
 
 	//if (PRINTDEBUG)
 	//{

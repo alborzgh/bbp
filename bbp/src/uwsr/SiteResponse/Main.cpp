@@ -5,11 +5,14 @@
 #include "outcropMotion.h"
 
 #include "StandardStream.h"
+#include "FileStream.h"
 #include "OPS_Stream.h"
 
 
 StandardStream sserr;
-OPS_Stream *opserrPtr = &sserr;
+FileStream ferr("log");
+OPS_Stream *opserrPtr = &ferr;
+OPS_Stream *opsoutPtr = &sserr;
 
 SiteLayering setupDummyLayers()
 {
@@ -29,13 +32,14 @@ int main(int argc, char** argv)
 
 	if (argc < 3)
 	{
-		opserr << "Need at least 2 arguments. The .loc (layering) file and the name of the motion in the x-direction." << endln;
+		opserr << ">>> SiteResponseTool: Not enough arguments. <<<" << endln;
 		std::getchar();
 		return -1;
 	}
 
 	// read the layering file
 	std::string layersFN(argv[1]);
+	std::string bbpOName(".");
 	SiteLayering siteLayers(layersFN.c_str());
 
 
@@ -46,6 +50,9 @@ int main(int argc, char** argv)
 	if (strcmp(argv[2], "-bbp") == 0)
 	{
 		std::string bbpFName(argv[3]);
+		bbpOName = std::string(argv[4]);
+		std::string bbpLName = std::string(argv[5]);
+		ferr.setFile(bbpLName.c_str(), APPEND);
 		// read bbp style motion
 		motionX.setBBPMotion(bbpFName.c_str(), 1);
 		motionZ.setBBPMotion(bbpFName.c_str(), 2);
@@ -65,6 +72,7 @@ int main(int argc, char** argv)
 
 
 	SiteResponseModel model(siteLayers, &motionX, &motionZ);
+	model.setOutputDir(bbpOName);
 	model.runTotalStressModel();
 	
 	return 0;
