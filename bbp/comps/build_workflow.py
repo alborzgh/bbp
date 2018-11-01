@@ -2006,6 +2006,10 @@ class WorkflowBuilder(object):
 
         # Build the workflow
         self.make_choices(gen_srf)
+
+        # run nonlinear site response analysis
+        self.do_nonlinear_siteresponse()
+
         # Don't do GOF for forward simulations FS: 5-Mar-2013
         # self.do_gof()
         self.do_html_generation()
@@ -2192,3 +2196,36 @@ class WorkflowBuilder(object):
             html_module.addArg(None)
         html_module.addArg(self.method)
         self.workflow.append(html_module)
+
+    def do_nonlinear_siteresponse(self):
+        # ask if nonlinear site response analysis needs to run
+        while True:
+            try:
+                val_choice = raw_input("Do you want to perform a "
+                                       "nonlinear site response analysis (y/n)? ")
+                if (val_choice.lower() == 'y' or val_choice.lower() == 'n' or
+                    val_choice.lower() == 'yes' or val_choice.lower() == 'no'):
+                    break
+                else:
+                    print("Invalid input.")
+            except KeyboardInterrupt:
+                print("\nAborting...")
+                sys.exit(1)
+
+        # Create site response workflow
+        try:
+            if val_choice.lower() == 'y' or val_choice.lower() == 'yes':
+                nonlinearSR_module = Module()
+                nonlinearSR_module.setName("uwsr")
+                nonlinearSR_module.addArg(os.path.basename(self.stations))
+                nonlinearSR_module.addStageFile(self.stations)
+                siteLayering = self.get_input_file("Local Site Layering",
+                                            ".loc")
+                nonlinearSR_module.addArg(siteLayering)
+                self.workflow.append(nonlinearSR_module)
+
+            else:
+                return
+        except KeyboardInterrupt:
+            print("\nAborting...")
+            sys.exit(1)
