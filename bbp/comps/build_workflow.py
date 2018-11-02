@@ -21,6 +21,7 @@ import validation_cfg
 import velocity_models
 from module import Module
 from install_cfg import InstallCfg
+from station_list import StationList
 
 #
 # Workflow consists of the following components:
@@ -2219,9 +2220,13 @@ class WorkflowBuilder(object):
                 nonlinearSR_module.setName("uwsr")
                 nonlinearSR_module.addArg(os.path.basename(self.stations))
                 nonlinearSR_module.addStageFile(self.stations)
-                siteLayering = self.get_input_file("Local Site Layering",
-                                            ".loc")
+                #siteLayering = self.get_input_file("Local Site Layering",
+                #                            ".loc")
+                siteLayering = []
+                siteLayering = self.get_local_site_input_file()
                 nonlinearSR_module.addArg(siteLayering)
+                for site in siteLayering:
+                    nonlinearSR_module.addStageFile(site)
                 self.workflow.append(nonlinearSR_module)
 
             else:
@@ -2229,3 +2234,126 @@ class WorkflowBuilder(object):
         except KeyboardInterrupt:
             print("\nAborting...")
             sys.exit(1)
+
+    def get_local_site_input_file(self):
+        """
+        This function asks the user to select a file from a list, or
+        provide a path to a file of a specific extension.
+        """
+        description = "Local Site Layering"
+        extension   = ".loc"
+        a_indir     = os.path.join(self.install.A_IN_DATA_DIR, str(self.sim_id))
+        siteList    = StationList(os.path.join(a_indir, self.stations)).getStationList()
+        loc_files   = []
+        # Loop until we get an answer
+        while True:
+            if self.opt_obj is not None:
+                stat_opt = self.opt_obj.get_next_option()
+            else:
+                stat_opt = raw_input("Do you want to\n"
+                                     "   (1) select a %s in %s\n" %
+                                     (description,
+                                      self.install.A_USER_DATA_DIR) +
+                                     "       OR\n" +
+                                     "   (2) enter the path of a %s file\n? " %
+                                     (description))
+
+
+            if stat_opt == "1":
+                entries = os.listdir(self.install.A_USER_DATA_DIR)
+                candidate_list = []
+                for entry in entries:
+                    if entry.endswith(extension):
+                        candidate_list.append(entry)
+                # Sort list of files alphabetically
+                candidate_list.sort()
+                # Create second list with basenames of the files
+                file_list = []
+                for entry in candidate_list:
+                    file_list.append(os.path.basename(entry))
+                if len(candidate_list) == 0:
+                    print("*" * 80)
+                    print("Couldn't find any %s files in the run directory" %
+                          (description))
+                    print("Aborting...")
+                    print("*" * 80)
+                    sys.exit(-1)
+
+                if self.opt_obj is not None:
+                    for site in siteList:
+                        op_num = self.opt_obj.get_next_option()
+                        # Check if user selected the file name
+                        if op_num in file_list:
+                            op_num = file_list.index(op_num) + 1
+                        else:
+                            try:
+                                op_num = int(op_num)
+                            except ValueError:
+                                print("Must select integer from 1 to %d!" %
+                                    len(candidate_list))
+                                sys.exit(1)
+                        if op_num < 1 or op_num > len(candidate_list):
+                            print("Must select integer from 1 to %d!" %
+                                len(candidate_list))
+                            sys.exit(1)
+                        print("Selecting file %s." %
+                            candidate_list[int(op_num) - 1])
+                        loc_files.append( os.path.join(self.install.A_USER_DATA_DIR,
+                                            candidate_list[int(op_num) - 1]))
+                    return loc_files
+                    
+
+                print("Here are the %s files in the run directory." %
+                      (description))
+                print("Please select one for each station: ")
+                choose_string = ""
+                for i in range(0, len(candidate_list)):
+                    choose_string = ("%s\n(%d) %s" %
+                                     (choose_string, (i + 1),
+                                      os.path.basename(candidate_list[i])))
+
+                for site in siteList:
+                    while True:
+                        prompt_string = "%s\nChoose a file for site %s\n? " % (choose_string, site.scode)
+                        try:
+                            choice_str = raw_input(prompt_string)
+                            # Check if user typed a filename
+                            if choice_str in file_list:
+                                loc_files.append( os.path.join(self.install.A_USER_DATA_DIR,
+                                                    candidate_list[file_list.index(choice_str)]) )
+                                break
+                            choice = int(choice_str)
+                            if choice >= 1 and choice <= len(candidate_list):
+                                loc_files.append( os.path.join(self.install.A_USER_DATA_DIR,
+                                                    candidate_list[choice - 1]))
+                                break
+                            else:
+                                print("You must enter an integer from 1 to %d." %
+                                    len(candidate_list))
+                        except TypeError:
+                            print("You must enter a valid integer from 1 to %d." %
+                                len(candidate_list))
+                return loc_files
+
+            elif stat_opt == "2":
+                for site in siteList:
+                    while True:
+                        if self.opt_obj is not None:
+                            choice_str = self.opt_obj.get_next_option()
+                        else:
+                            choice_str = raw_input("Enter path and "
+                                                "filename of %s for site %s: " %
+                                                (description, site.scode))
+                                
+                        if ((os.path.exists(choice_str) and 
+                            (choice_str.find(extension) >= 0))):
+                            break
+                        else:
+                            print("File "
+                                "%s not found or invalid %s, please re-enter" %
+                                (choice_str, description))
+                    loc_files.append(choice_str)
+                return loc_files
+
+            else:
+                print("You must enter an integer from 1 to 2.")

@@ -7,6 +7,7 @@ all: version
 	cd unr; make -f makefile;
 	cd irikura; make -f makefile;
 	cd usgs; make -f makefile;
+	cd uwrs; make -f makefile;
 
 version:
 	gcc --version > gcc.version
@@ -22,3 +23,4 @@ clean:
 	cd unr; make -f makefile clean;
 	cd irikura; make -f makefile clean;
 	cd usgs; make -f makefile clean;
+	cd uwrs; make -f makefile clean;
